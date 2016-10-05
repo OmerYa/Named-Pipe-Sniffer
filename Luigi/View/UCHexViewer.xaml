@@ -1,0 +1,73 @@
+﻿<UserControl x:Class="LuigiWPF.View.UCHexViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:LuigiWPF.View"
+             mc:Ignorable="d" 
+             xmlns:con="clr-namespace:LuigiWPF.View.Converter"
+             xmlns:gif="http://wpfanimatedgif.codeplex.com"
+             d:DesignHeight="300" d:DesignWidth="300">
+    <UserControl.Resources>
+        <con:Bool2Vis x:Key="bool2vis"></con:Bool2Vis>
+        <con:OpBool2Vis x:Key="OppBool2vis"></con:OpBool2Vis>
+    </UserControl.Resources>
+  
+
+
+        <Grid HorizontalAlignment="Center" >
+            <UniformGrid Rows="1" Columns="1"></UniformGrid>
+            <Border Background="White" Visibility="{Binding IsWorking, Converter={StaticResource bool2vis}}">
+                <Image gif:ImageBehavior.AnimatedSource="../Images/loading2.gif" Height="32" Width="32"/>
+            </Border>
+            
+            <DataGrid HorizontalAlignment="Center" BorderThickness="0" HorizontalContentAlignment="Center" 
+                      Visibility="{Binding IsWorking, Converter={StaticResource OppBool2vis}}"
+                      ItemsSource="{Binding Data}"  IsReadOnly="True" SelectionUnit="Cell" VirtualizingPanel.IsVirtualizing="True"
+		              AutoGenerateColumns="False" Name="grdHexView"  GridLinesVisibility="Vertical"
+                      Background="white" 
+                      >
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Command="Copy" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+            <DataGrid.Columns >
+
+                <DataGridTextColumn Header="Index" Width="Auto" MinWidth="100" MaxWidth="150"  IsReadOnly="True"
+                                        FontFamily="Courier New" Binding="{Binding RowNumbers}" CanUserReorder="False" CanUserResize="False">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <DataGridTextColumn Header="Hex" Width="Auto" MinWidth="250" MaxWidth="350"  IsReadOnly="True" 
+                                        FontFamily="Courier New" Binding="{Binding HexData}" CanUserReorder="False" 
+                                        CanUserResize="False">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <DataGridTextColumn Header="String" Width="Auto" MinWidth="100" IsReadOnly="True" FontFamily="Courier New" 
+                                    CanUserResize="False" Binding="{Binding StringData}" 
+                                    CanUserReorder="False">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+            </DataGrid.Columns>
+
+            </DataGrid>
+        </Grid>
+    
+
+
+</UserControl>

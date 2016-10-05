@@ -1,0 +1,108 @@
+﻿
+    <Window
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:winForm="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
+        xmlns:sysComp="clr-namespace:System.ComponentModel.Design;assembly=System.Design"
+        xmlns:vm="clr-namespace:LuigiWPF.ViewModel" xmlns:Model="clr-namespace:LuigiWPF.Model" x:Class="LuigiWPF.MainWindow"
+        WindowStartupLocation="CenterScreen"
+        MinWidth="600"  
+        Title="Luigi " Height="450" Width="730" Loaded="Window_Loaded">
+
+        <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+        <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="35"/>
+            <RowDefinition Height=".4*" MinHeight="100" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height=".3*" MinHeight="30" />
+        </Grid.RowDefinitions>
+
+        <!-- Menu -->
+
+        <Menu Grid.Row="0">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Clear Filters" Command="{Binding ClearFilters}"/>
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
+        </Menu>
+
+        <!-- Select File -->
+
+        <StackPanel VerticalAlignment="Center" Grid.Row="1" Orientation="Horizontal" Margin="20 5 0 5">
+            <TextBlock VerticalAlignment="Center" Text="Path: "/>
+            <TextBox HorizontalAlignment="Stretch" MinWidth="420" Margin="10 0 10 0" 
+				IsReadOnly="True"
+				Text="{Binding SelectedFolder, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button Width="100" Content="Open Folder" Command="{Binding OpenFolderCommand}"/>
+            <Button Width="100" Content="Clear Filters" Command="{Binding ClearFilters}"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" ItemsSource="{Binding PipeDataCollection}" 
+			SelectedValue="{Binding SelectedPipe}" IsReadOnly="True" SelectionMode="Single"
+			HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" 
+			AutoGenerateColumns="False" Name="ContextMainMenu"  PreviewMouseRightButtonDown="MouseRightButtonEvent"  >
+            <DataGrid.ContextMenu>
+                <ContextMenu ItemsSource="{Binding MainContextMenu}" Name="DGMainContextMenu" >
+                    <ContextMenu.ItemContainerStyle>
+                        <Style TargetType="{x:Type MenuItem}">
+                            <Setter Property="MenuItem.Header" Value="{Binding Name}" />
+                            <Setter Property="Command" Value="{Binding MyContextMenuCommand}"/>
+                        </Style>
+                    </ContextMenu.ItemContainerStyle>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+         
+            <DataGrid.Columns>
+
+                <DataGridTextColumn Header="Communication ID" Width="Auto" IsReadOnly="True" Binding="{Binding CommunicationId}"/>
+
+                <DataGridTextColumn Header="Process ID" Width="Auto" IsReadOnly="True" Binding="{Binding ProcessId}"/>
+
+                <DataGridTextColumn Header="Performance Counter" Width="Auto" IsReadOnly="True" Binding="{Binding PerformanceCounter}"/>
+
+                <DataGridTextColumn Header="Pipe Name" Width="*" IsReadOnly="True" Binding="{Binding PipeName}"/>
+
+                <DataGridTextColumn Header="Pipe Data" Width="Auto" IsReadOnly="True" Visibility="Hidden" />
+
+                <DataGridTextColumn Header="Size" Width="Auto" MinWidth="75" IsReadOnly="True" Binding="{Binding SizeHumanReadable}" SortMemberPath="Size"/>
+
+
+            </DataGrid.Columns>
+
+
+
+
+        </DataGrid>
+
+
+        <GridSplitter 
+			ResizeDirection="Rows" 
+			Grid.Column="0"
+			Grid.Row="3"
+			Width="Auto" 
+			Height="3"
+			HorizontalAlignment="Stretch" 
+			VerticalAlignment="Stretch" 
+			Margin="0"
+            />
+
+        <!-- Byte Viewer -->
+
+        <UserControl Grid.Row="4" HorizontalAlignment="Stretch" Content="{Binding CurrentViewer}"/>
+
+        <!--
+            <WindowsFormsHost  Grid.Row="4"  x:Name="winFormInt" HorizontalAlignment="Stretch"  >
+            <sysComp:ByteViewer Name="bViewer"></sysComp:ByteViewer>
+        </WindowsFormsHost>
+            -->
+
+
+    </Grid>
+</Window>
+
