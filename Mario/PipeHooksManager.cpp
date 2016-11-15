@@ -7,6 +7,7 @@ PipeHooksManager::PipeHooksManager()
 	pfnNtClose = FunctionDelegates::GetInstance().pfnNtClose;
 	pfnNtDuplicateObject = FunctionDelegates::GetInstance().pfnNtDuplicateObject;
 	pfnNtWriteFile = FunctionDelegates::GetInstance().pfnNtWriteFile;
+	pfnNtReadFile = FunctionDelegates::GetInstance().pfnNtReadFile;
 	pfnNtFsControlFile = FunctionDelegates::GetInstance().pfnNtFsControlFile;
 }
 
@@ -266,9 +267,12 @@ NTSTATUS PipeHooksManager::NtReadFileHook(
 		ByteOffset,
 		Key);
 
+#ifndef MONITOR_ALL_PIPES
 	// Handle ReadFile hook only if we have network pipes
 	if (GetInstance().lstPipes.HasNetworkPipes())
 	{
+#endif
+
 		DWORD dwErrCode = GetLastError();
 
 		PipeHandle *pPipeHandle = GetInstance().lstPipes.GetPipeHandle(FileHandle);
@@ -283,7 +287,9 @@ NTSTATUS PipeHooksManager::NtReadFileHook(
 		}
 
 		SetLastError(dwErrCode);
+#ifndef MONITOR_ALL_PIPES
 	}
+#endif
 
 	return retVal;
 }
@@ -425,32 +431,37 @@ VOID PipeHooksManager::MonitorPipes()
 	NTSTATUS result = LhInstallHook(pfnNtCreateNamedPipe, NtCreateNamedPipeFileHook, NULL, &hNtCreateNamedPipeHook);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtCreateNamedPipeFileHook\n"));
 	HOOK_TRACE_INFO hNtCreateFile = { NULL };
 	result = LhInstallHook(pfnNtCreateFile, NtCreateFileHook, NULL, &hNtCreateFile);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtCreateFileHook\n"));
 	HOOK_TRACE_INFO hNtClose = { NULL };
 	result = LhInstallHook(pfnNtClose, NtCloseHook, NULL, &hNtClose);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtCloseHook\n"));
 	HOOK_TRACE_INFO hNtDuplicateObject = { NULL };
 	result = LhInstallHook(pfnNtDuplicateObject, NtDuplicateObjectHook, NULL, &hNtDuplicateObject);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtDuplicateObjectHook\n"));
 	HOOK_TRACE_INFO hNtWriteFileHook = { NULL };
 	result = LhInstallHook(pfnNtWriteFile, NtWriteFileHook, NULL, &hNtWriteFileHook);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtWriteFileHook\n"));
+	HOOK_TRACE_INFO hNtReadFileHook = { NULL };
+	result = LhInstallHook(pfnNtReadFile, NtReadFileHook, NULL, &hNtReadFileHook);
+	if (FAILED(result))
+		return;
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtReadFileHook\n"));
 	HOOK_TRACE_INFO hNtFsControlFileHook = { NULL };
 	result = LhInstallHook(pfnNtFsControlFile, NtFsControlFileHook, NULL, &hNtFsControlFileHook);
 	if (FAILED(result))
 		return;
-
+	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: NtFsControlFileHook\n"));
 
 	ULONG ACLEntries[1] = { 0 };
 	LhSetExclusiveACL(ACLEntries, 0, &hNtCreateNamedPipeHook);
@@ -458,6 +469,7 @@ VOID PipeHooksManager::MonitorPipes()
 	LhSetExclusiveACL(ACLEntries, 0, &hNtClose);
 	LhSetExclusiveACL(ACLEntries, 0, &hNtDuplicateObject);
 	LhSetExclusiveACL(ACLEntries, 0, &hNtWriteFileHook);
+	LhSetExclusiveACL(ACLEntries, 0, &hNtReadFileHook);
 	LhSetExclusiveACL(ACLEntries, 0, &hNtFsControlFileHook);
 	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: end\n"));
 
