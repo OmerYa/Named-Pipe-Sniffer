@@ -2,7 +2,6 @@
 
 PipeHooksManager::PipeHooksManager()
 {
-
 	pfnNtCreateNamedPipe = FunctionDelegates::GetInstance().pfnNtCreateNamedPipe;
 	pfnNtCreateFile = FunctionDelegates::GetInstance().pfnNtCreateFile;
 	pfnNtClose = FunctionDelegates::GetInstance().pfnNtClose;
@@ -21,6 +20,21 @@ PipeHooksManager& PipeHooksManager::GetInstance()
 {
 	static PipeHooksManager instance;
 	return instance;
+}
+
+HANDLE_TYPE PipeHooksManager::GetHandleType(UNICODE_STRING *szHandleName)
+{
+	HANDLE_TYPE eHandleType = UNKNOWN_HANDLE;
+	if (szHandleName->Buffer == StrStrIW(szHandleName->Buffer, L"\\??\\pipe\\"))
+	{
+		eHandleType = LOCAL_PIPE;
+	}
+	else if (NULL != StrStrIW(szHandleName->Buffer, L"\\pipe\\"))
+	{
+		eHandleType = NETWORK_PIPE;
+	}
+
+	return eHandleType;
 }
 
 
@@ -64,7 +78,8 @@ NTSTATUS PipeHooksManager::NtCreateNamedPipeFileHook(
 		{
 			OutputDebugString(ObjectAttributes->ObjectName->Buffer);
 			OutputDebugString(TEXT("PipeHooksManager::NtCreateNamedPipeFileHook :: added NamedPipe\n"));
-			GetInstance().lstPipes.AddPipeHandle(ObjectAttributes->ObjectName, *NamedPipeFileHandle);
+			HANDLE_TYPE eType = GetInstance().GetHandleType(ObjectAttributes->ObjectName);
+			GetInstance().lstPipes.AddPipeHandle(ObjectAttributes->ObjectName, *NamedPipeFileHandle, eType == NETWORK_PIPE);
 		}
 	}
 
@@ -110,15 +125,11 @@ NTSTATUS PipeHooksManager::NtCreateFileHook(
 		{
 			OutputDebugString(ObjectAttributes->ObjectName->Buffer);
 
-			// Make sure its a Named Pipe
-			if (ObjectAttributes->ObjectName->Buffer == StrStrIW(ObjectAttributes->ObjectName->Buffer, L"\\??\\pipe\\"))
+			HANDLE_TYPE eType = GetInstance().GetHandleType(ObjectAttributes->ObjectName);
+			if (UNKNOWN_HANDLE != eType)
 			{
-				// Whitelist garbage pipe
-				if (ObjectAttributes->ObjectName->Buffer != StrStrIW(ObjectAttributes->ObjectName->Buffer, L"\\??\\pipe\\srvsvc"))
-				{
-					OutputDebugString(TEXT("PipeHooksManager::NtCreateFile :: added NamedPipe\n"));
-					GetInstance().lstPipes.AddPipeHandle(ObjectAttributes->ObjectName, *FileHandle);
-				}
+				OutputDebugString(TEXT("PipeHooksManager::NtCreateFile :: added NamedPipe\n"));
+				GetInstance().lstPipes.AddPipeHandle(ObjectAttributes->ObjectName, *FileHandle, eType == NETWORK_PIPE);
 			}
 		}
 		OutputDebugString(TEXT("PipeHooksManager::NtCreateFile :: end \n"));
@@ -217,18 +228,62 @@ NTSTATUS PipeHooksManager::NtWriteFileHook(
 
 	DWORD dwErrCode = GetLastError();
 
-	LPWSTR lpPipeHandleName = GetInstance().lstPipes.GetHandleName(FileHandle);
+	PipeHandle *pPipeHandle = GetInstance().lstPipes.GetPipeHandle(FileHandle);
 
-	if (NULL != lpPipeHandleName)
+	if (NULL != pPipeHandle)
 	{
 		OutputDebugString(TEXT("PipeHooksManager::NtWriteFileHook :: Writing buffer\n"));
-		OutputDebugStringW(lpPipeHandleName);
+		OutputDebugStringW(pPipeHandle->lpName);
 		_LARGE_INTEGER liTimestamp = { 0 };
 		QueryPerformanceCounter(&liTimestamp);
-		GetInstance().WriteBuffer(lpPipeHandleName, Buffer, Length, liTimestamp.QuadPart);
+		GetInstance().WriteBuffer(pPipeHandle->lpName, Buffer, Length, liTimestamp.QuadPart);
 	}
 
 	SetLastError(dwErrCode);
+
+	return retVal;
+}
+
+NTSTATUS PipeHooksManager::NtReadFileHook(
+	_In_     HANDLE           FileHandle,
+	_In_opt_ HANDLE           Event,
+	_In_opt_ PIO_APC_ROUTINE  ApcRoutine,
+	_In_opt_ PVOID            ApcContext,
+	_Out_    PIO_STATUS_BLOCK IoStatusBlock,
+	_Out_    PVOID            Buffer,
+	_In_     ULONG            Length,
+	_In_opt_ PLARGE_INTEGER   ByteOffset,
+	_In_opt_ PULONG           Key)
+{
+	NTSTATUS retVal = GetInstance().pfnNtReadFile(
+		FileHandle,
+		Event,
+		ApcRoutine,
+		ApcContext,
+		IoStatusBlock,
+		Buffer,
+		Length,
+		ByteOffset,
+		Key);
+
+	// Handle ReadFile hook only if we have network pipes
+	if (GetInstance().lstPipes.HasNetworkPipes())
+	{
+		DWORD dwErrCode = GetLastError();
+
+		PipeHandle *pPipeHandle = GetInstance().lstPipes.GetPipeHandle(FileHandle);
+
+		if (NULL != pPipeHandle)
+		{
+			OutputDebugString(TEXT("PipeHooksManager::NtReadFileHook :: Writing buffer\n"));
+			OutputDebugStringW(pPipeHandle->lpName);
+			_LARGE_INTEGER liTimestamp = { 0 };
+			QueryPerformanceCounter(&liTimestamp);
+			GetInstance().WriteBuffer(pPipeHandle->lpName, Buffer, Length, liTimestamp.QuadPart);
+		}
+
+		SetLastError(dwErrCode);
+	}
 
 	return retVal;
 }
@@ -260,15 +315,15 @@ NTSTATUS PipeHooksManager::NtFsControlFileHook(
 
 	DWORD dwErrCode = GetLastError();
 
-	LPWSTR lpPipeHandleName = GetInstance().lstPipes.GetHandleName(FileHandle);
+	PipeHandle *pPipeHandle = GetInstance().lstPipes.GetPipeHandle(FileHandle);
 
-	if (NULL != lpPipeHandleName && NULL != InputBuffer)
+	if (NULL != pPipeHandle && NULL != InputBuffer)
 	{
 		OutputDebugString(TEXT("PipeHooksManager::NtFsControlFileHook :: Writing buffer\n"));
-		OutputDebugStringW(lpPipeHandleName);
+		OutputDebugStringW(pPipeHandle->lpName);
 		_LARGE_INTEGER liTimestamp = { 0 };
 		QueryPerformanceCounter(&liTimestamp);
-		GetInstance().WriteBuffer(lpPipeHandleName, InputBuffer, InputBufferLength, liTimestamp.QuadPart);
+		GetInstance().WriteBuffer(pPipeHandle->lpName, InputBuffer, InputBufferLength, liTimestamp.QuadPart);
 	}
 
 	SetLastError(dwErrCode);
@@ -407,3 +462,4 @@ VOID PipeHooksManager::MonitorPipes()
 	OutputDebugString(TEXT("PipeHooksManager::MonitorPipes :: end\n"));
 
 }
+

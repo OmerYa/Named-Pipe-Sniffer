@@ -3,13 +3,14 @@
 #include "stdafx.h"
 
 
-PipeHandle::PipeHandle(PUNICODE_STRING _lpName, HANDLE _hPipe)
+PipeHandle::PipeHandle(PUNICODE_STRING _lpName, HANDLE _hPipe, BOOL _bNetworkPipe)
 {
 	size_t cbName = 0;
 	HRESULT hr = S_OK;
 
 	lpName = NULL;
 	hPipe = INVALID_HANDLE_VALUE;
+	bNetworkPipe = FALSE;
 
 	if (NULL == _lpName)
 	{
@@ -51,17 +52,19 @@ PipeHandle::PipeHandle(PUNICODE_STRING _lpName, HANDLE _hPipe)
 
 
 	hPipe = _hPipe;
+	bNetworkPipe = _bNetworkPipe;
 }
 
 
 
-PipeHandle::PipeHandle(LPCWSTR _lpName, HANDLE _hPipe)
+PipeHandle::PipeHandle(LPCWSTR _lpName, HANDLE _hPipe, BOOL _bNetworkPipe)
 {
 	size_t cbName = 0;
 	HRESULT hr = S_OK;
 
 	lpName = NULL;
 	hPipe = INVALID_HANDLE_VALUE;
+	bNetworkPipe = FALSE;
 
 	if (NULL == _lpName)
 	{
@@ -103,6 +106,7 @@ PipeHandle::PipeHandle(LPCWSTR _lpName, HANDLE _hPipe)
 	}
 
 	hPipe = _hPipe;
+	bNetworkPipe = _bNetworkPipe;
 }
 
 

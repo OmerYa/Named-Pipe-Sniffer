@@ -2,17 +2,27 @@
 
 #include "stdafx.h"
 
+typedef enum _HANDLE_TYPE {
+	UNKNOWN_HANDLE = 0,
+	LOCAL_PIPE,
+	NETWORK_PIPE
+} HANDLE_TYPE;
+
 class PipeHooksManager
 {
+
 private:
 	volatile PFN_NT_CREATEA_NAMED_PIPE pfnNtCreateNamedPipe;
 	volatile PFN_NT_CREATE_FILE		   pfnNtCreateFile;
 	volatile PFN_NT_CLOSE			   pfnNtClose;
 	volatile PFN_NT_DUPLICATE_OBJECT   pfnNtDuplicateObject;
 	volatile PFN_NT_WRITE_FILE		   pfnNtWriteFile;
+	volatile PFN_NT_READ_FILE		   pfnNtReadFile;
 	volatile PFN_NT_FS_CONTROL_FILE	   pfnNtFsControlFile;
 
 	void WriteBuffer(LPCWSTR lpPipeHandleName, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LONGLONG llTimestamp);
+
+	HANDLE_TYPE GetHandleType(UNICODE_STRING *szHandleName);
 
 protected:
 	PipeHandlesList				lstPipes;
@@ -70,6 +80,17 @@ protected:
 		IN ULONG                Length,
 		IN PLARGE_INTEGER       ByteOffset OPTIONAL,
 		IN PULONG               Key OPTIONAL);
+
+	static NTSTATUS NTAPI NtReadFileHook(
+		_In_     HANDLE           FileHandle,
+		_In_opt_ HANDLE           Event,
+		_In_opt_ PIO_APC_ROUTINE  ApcRoutine,
+		_In_opt_ PVOID            ApcContext,
+		_Out_    PIO_STATUS_BLOCK IoStatusBlock,
+		_Out_    PVOID            Buffer,
+		_In_     ULONG            Length,
+		_In_opt_ PLARGE_INTEGER   ByteOffset,
+		_In_opt_ PULONG           Key);
 
 	static NTSTATUS NTAPI NtFsControlFileHook(
 		IN HANDLE               FileHandle,

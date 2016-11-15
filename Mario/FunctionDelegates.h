@@ -78,6 +78,17 @@ typedef NTSTATUS (NTAPI *PFN_NT_WRITE_FILE)(
 	IN PLARGE_INTEGER       ByteOffset OPTIONAL,
 	IN PULONG               Key OPTIONAL);
 
+typedef NTSTATUS (NTAPI *PFN_NT_READ_FILE)(
+	_In_     HANDLE           FileHandle,
+	_In_opt_ HANDLE           Event,
+	_In_opt_ PIO_APC_ROUTINE  ApcRoutine,
+	_In_opt_ PVOID            ApcContext,
+	_Out_    PIO_STATUS_BLOCK IoStatusBlock,
+	_Out_    PVOID            Buffer,
+	_In_     ULONG            Length,
+	_In_opt_ PLARGE_INTEGER   ByteOffset,
+	_In_opt_ PULONG           Key
+	);
 
 typedef NTSTATUS (NTAPI *PFN_NT_FS_CONTROL_FILE)(
 	IN HANDLE               FileHandle,
@@ -290,6 +301,7 @@ public:
 	volatile PFN_NT_CLOSE pfnNtClose;
 	volatile PFN_NT_DUPLICATE_OBJECT pfnNtDuplicateObject;
 	volatile PFN_NT_WRITE_FILE pfnNtWriteFile;
+	volatile PFN_NT_READ_FILE pfnNtReadFile;
 	volatile PFN_NT_FS_CONTROL_FILE pfnNtFsControlFile;
 
 	static FunctionDelegates& GetInstance();

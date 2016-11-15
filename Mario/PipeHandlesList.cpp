@@ -4,6 +4,7 @@
 PipeHandlesList::PipeHandlesList() : std::list<PipeHandle*>()
 {
 	//InitializeCriticalSection(&hLock);
+	uiNetworkPipesCount = 0;
 }
 
 
@@ -25,11 +26,11 @@ PipeHandlesList::~PipeHandlesList()
 
 
 
-void PipeHandlesList::AddPipeHandle(PUNICODE_STRING lpHandleName, HANDLE hPipe)
+void PipeHandlesList::AddPipeHandle(PUNICODE_STRING lpHandleName, HANDLE hPipe, BOOL bNetworkPipe)
 {
 	PipeHandle *phPipe = NULL;
 
-	phPipe = new (std::nothrow) PipeHandle(lpHandleName, hPipe);
+	phPipe = new (std::nothrow) PipeHandle(lpHandleName, hPipe, bNetworkPipe);
 	if (NULL == phPipe)
 	{
 		OutputDebugString(TEXT("PipeHandlesList::AddPipeHandle::Failed to allocate PipeHandle object"));
@@ -38,15 +39,16 @@ void PipeHandlesList::AddPipeHandle(PUNICODE_STRING lpHandleName, HANDLE hPipe)
 
 	//EnterCriticalSection(&hLock);
 	this->push_back(phPipe);
+	if (bNetworkPipe) uiNetworkPipesCount++;
 	//LeaveCriticalSection(&hLock);
 }
 
 
-void PipeHandlesList::AddPipeHandle(LPCWSTR lpHandleName, HANDLE hPipe)
+void PipeHandlesList::AddPipeHandle(LPCWSTR lpHandleName, HANDLE hPipe, BOOL bNetworkPipe)
 {
 	PipeHandle *phPipe = NULL;
 
-	phPipe = new (std::nothrow) PipeHandle(lpHandleName, hPipe);
+	phPipe = new (std::nothrow) PipeHandle(lpHandleName, hPipe, bNetworkPipe);
 	if (NULL == phPipe)
 	{
 		OutputDebugString(TEXT("PipeHandlesList::AddPipeHandle(W)::Failed to allocate PipeHandle object"));
@@ -55,6 +57,7 @@ void PipeHandlesList::AddPipeHandle(LPCWSTR lpHandleName, HANDLE hPipe)
 
 	//EnterCriticalSection(&hLock);
 	this->push_back(phPipe);
+	if (bNetworkPipe) uiNetworkPipesCount++;
 	//LeaveCriticalSection(&hLock);
 }
 
@@ -85,6 +88,7 @@ BOOL PipeHandlesList::RemovePipeHandle(HANDLE hPipe)
 	//EnterCriticalSection(&hLock);
 	if (TRUE == this->FindHandle(hPipe, &it))
 	{
+		if ((*it)->bNetworkPipe) uiNetworkPipesCount--;
 		this->erase(it);
 		retVal = TRUE;
 	}
@@ -93,30 +97,37 @@ BOOL PipeHandlesList::RemovePipeHandle(HANDLE hPipe)
 	return retVal;
 }
 
-LPWSTR PipeHandlesList::GetHandleName(HANDLE hPipe)
+PipeHandle *PipeHandlesList::GetPipeHandle(HANDLE hPipe)
 {
-	LPWSTR lpPipeName = NULL;
+	PipeHandle *pPipeHandle = NULL;
 
 	std::list<PipeHandle*>::iterator it;
 	//EnterCriticalSection(&hLock);
 	if (TRUE == this->FindHandle(hPipe, &it))
 	{
-		lpPipeName = (*it)->lpName;
+		pPipeHandle = (*it);
 	}
 	//LeaveCriticalSection(&hLock);
 
-	return lpPipeName;
+	return pPipeHandle;
 }
 
 BOOL PipeHandlesList::DuplicatePipeHandle(HANDLE hPipeSource, HANDLE hPipeDestination)
 {
 	//EnterCriticalSection(&hLock);
-	LPWSTR lpName = this->GetHandleName(hPipeSource);
-	if (NULL != lpName)
+	PipeHandle *pPipeHandle = this->GetPipeHandle(hPipeSource);
+	if (NULL != pPipeHandle)
 	{
-		this->AddPipeHandle(lpName, hPipeDestination);
+		this->AddPipeHandle(pPipeHandle->lpName, hPipeDestination, pPipeHandle->bNetworkPipe);
+		if (pPipeHandle->bNetworkPipe) uiNetworkPipesCount++;
 	}
 	//LeaveCriticalSection(&hLock);
 
-	return NULL != lpName;
+	return NULL != pPipeHandle;
+}
+
+
+BOOL PipeHandlesList::HasNetworkPipes()
+{
+	return 0 != uiNetworkPipesCount;
 }
